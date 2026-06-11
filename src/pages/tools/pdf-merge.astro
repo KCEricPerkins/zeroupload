@@ -1,0 +1,259 @@
+---
+import Base from "../../layouts/Base.astro";
+import SilenceBadge from "../../components/SilenceBadge.astro";
+import CarbonAd from "../../components/CarbonAd.astro";
+---
+<Base
+  title="Merge PDF Files"
+  description="Combine multiple PDF files into one — entirely in your browser. No upload, no file size limits, no watermarks. Reorder files before merging."
+  isTool
+>
+  <div class="tool-head">
+    <h1>Merge PDF Files</h1>
+    <p class="lede">
+      Combine PDFs into a single file without uploading them anywhere.
+      Contracts, medical records, and tax documents stay on your machine —
+      the merge happens in your browser, so there are no size limits and
+      nothing for a server to retain.
+    </p>
+    <SilenceBadge />
+  </div>
+
+  <div class="merge-stack">
+    <div class="panel">
+      <div class="dropzone" id="dz" tabindex="0" role="button" aria-label="Add PDF files">
+        <strong>Drop PDFs here</strong>
+        <span>or click to choose files</span>
+        <input type="file" id="files" accept="application/pdf" multiple hidden />
+      </div>
+
+      <ul class="file-list" id="list"></ul>
+
+      <p class="status err" id="merge-status" hidden></p>
+
+      <div class="merge-actions">
+        <button class="btn" id="merge" disabled>Merge into one PDF</button>
+        <button class="btn secondary" id="clear" disabled>Clear all</button>
+        <span class="totals" id="totals"></span>
+      </div>
+    </div>
+  </div>
+
+  <CarbonAd />
+
+  <article class="seo-prose">
+    <h2>How merging works without a server</h2>
+    <p>
+      This tool uses pdf-lib, an open-source PDF library that runs as
+      JavaScript in your browser. When you click merge, each document is
+      parsed locally, its pages are copied into a new PDF in the order shown,
+      and the combined file is assembled in your browser's memory and saved
+      straight to your downloads. Open your browser's network panel while
+      merging — nothing is transmitted.
+    </p>
+    <h2>Why that matters for sensitive documents</h2>
+    <p>
+      Server-based merge tools require you to upload the very documents
+      people most often need to combine: leases, medical records, financial
+      statements, legal filings. Even with good retention policies, that's an
+      avoidable exposure. Local merging removes the question entirely, which
+      also makes this tool safe to use under workplace policies that prohibit
+      uploading client files to third-party sites.
+    </p>
+    <h2>Limits</h2>
+    <p>
+      The only limit is your device's memory; hundred-plus-page merges are
+      routine on any modern laptop or phone. Password-protected PDFs need to
+      be unlocked before merging. Page order follows the list order — use the
+      arrows or drag to rearrange before you merge.
+    </p>
+  </article>
+
+  <style>
+    .merge-stack { margin: 20px 0 48px; }
+    .dropzone {
+      border: 2px dashed var(--line);
+      border-radius: 12px;
+      padding: 36px 20px;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      color: var(--ink-soft); cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .dropzone strong { color: var(--ink); font-family: var(--font-display); font-size: 1.05rem; }
+    .dropzone.over, .dropzone:hover { border-color: var(--cobalt); background: color-mix(in srgb, var(--cobalt) 4%, transparent); }
+    .dropzone:focus-visible { outline: 3px solid color-mix(in srgb, var(--cobalt) 40%, transparent); }
+    .file-list { list-style: none; padding: 0; margin: 14px 0 0; display: flex; flex-direction: column; gap: 8px; }
+    .file-item {
+      display: flex; align-items: center; gap: 10px;
+      border: 1px solid var(--line); border-radius: 10px;
+      padding: 9px 12px; background: var(--bg);
+      cursor: grab;
+    }
+    .file-item.dragging { opacity: 0.5; }
+    .file-item .num {
+      font-family: var(--font-mono); font-size: 0.75rem; color: var(--ink-soft);
+      width: 20px; text-align: right; flex-shrink: 0;
+    }
+    .file-item .name { font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-item .meta { font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-soft); margin-left: auto; flex-shrink: 0; }
+    .file-item button {
+      border: 1px solid var(--line); background: var(--surface); border-radius: 6px;
+      width: 26px; height: 26px; cursor: pointer; color: var(--ink-soft);
+      flex-shrink: 0;
+    }
+    .file-item button:hover { color: var(--ink); border-color: var(--ink-soft); }
+    .merge-actions { display: flex; gap: 8px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+    .totals { font-family: var(--font-mono); font-size: 0.78rem; color: var(--ink-soft); margin-left: auto; }
+  </style>
+
+  <script>
+    import { PDFDocument } from "pdf-lib";
+
+    type Entry = { file: File; pages: number | null; bytes: ArrayBuffer | null; error: string | null };
+    let entries: Entry[] = [];
+    let dragIndex: number | null = null;
+
+    const $ = (id: string) => document.getElementById(id) as any;
+    const fmtSize = (n: number) =>
+      n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.ceil(n / 1024) + " KB";
+
+    async function addFiles(files: FileList | File[]) {
+      for (const file of Array.from(files)) {
+        if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) continue;
+        const entry: Entry = { file, pages: null, bytes: null, error: null };
+        entries.push(entry);
+        try {
+          entry.bytes = await file.arrayBuffer();
+          const doc = await PDFDocument.load(entry.bytes, { ignoreEncryption: false });
+          entry.pages = doc.getPageCount();
+        } catch (e: any) {
+          entry.error = /encrypt/i.test(e.message)
+            ? "password-protected — unlock it first"
+            : "couldn't read this file";
+        }
+      }
+      renderList();
+    }
+
+    function renderList() {
+      const list = $("list");
+      list.innerHTML = "";
+      entries.forEach((en, i) => {
+        const li = document.createElement("li");
+        li.className = "file-item";
+        li.draggable = true;
+        li.dataset.index = String(i);
+
+        const num = document.createElement("span");
+        num.className = "num";
+        num.textContent = String(i + 1);
+
+        const name = document.createElement("span");
+        name.className = "name";
+        name.textContent = en.file.name;
+
+        const meta = document.createElement("span");
+        meta.className = "meta";
+        meta.textContent = en.error
+          ? en.error
+          : `${en.pages ?? "…"} pg · ${fmtSize(en.file.size)}`;
+        if (en.error) meta.style.color = "var(--danger)";
+
+        const up = btn("↑", "Move up", () => move(i, -1));
+        const down = btn("↓", "Move down", () => move(i, 1));
+        const del = btn("✕", "Remove", () => { entries.splice(i, 1); renderList(); });
+
+        li.append(num, name, meta, up, down, del);
+
+        li.addEventListener("dragstart", () => { dragIndex = i; li.classList.add("dragging"); });
+        li.addEventListener("dragend", () => { dragIndex = null; li.classList.remove("dragging"); });
+        li.addEventListener("dragover", (e) => e.preventDefault());
+        li.addEventListener("drop", (e) => {
+          e.preventDefault();
+          if (dragIndex === null || dragIndex === i) return;
+          const [moved] = entries.splice(dragIndex, 1);
+          entries.splice(i, 0, moved);
+          renderList();
+        });
+
+        list.appendChild(li);
+      });
+
+      const valid = entries.filter((e) => !e.error);
+      const totalPages = valid.reduce((s, e) => s + (e.pages || 0), 0);
+      const totalBytes = valid.reduce((s, e) => s + e.file.size, 0);
+      $("totals").textContent = valid.length
+        ? `${valid.length} files · ${totalPages} pages · ${fmtSize(totalBytes)}`
+        : "";
+      $("merge").disabled = valid.length < 2;
+      $("clear").disabled = entries.length === 0;
+      $("merge-status").hidden = true;
+    }
+
+    function btn(label: string, title: string, fn: () => void) {
+      const b = document.createElement("button");
+      b.textContent = label;
+      b.title = title;
+      b.setAttribute("aria-label", title);
+      b.addEventListener("click", (e) => { e.stopPropagation(); fn(); });
+      return b;
+    }
+
+    function move(i: number, dir: number) {
+      const j = i + dir;
+      if (j < 0 || j >= entries.length) return;
+      [entries[i], entries[j]] = [entries[j], entries[i]];
+      renderList();
+    }
+
+    async function merge() {
+      const mergeBtn = $("merge");
+      mergeBtn.disabled = true;
+      mergeBtn.textContent = "Merging…";
+      const status = $("merge-status");
+      status.hidden = true;
+      try {
+        const out = await PDFDocument.create();
+        for (const en of entries) {
+          if (en.error || !en.bytes) continue;
+          const src = await PDFDocument.load(en.bytes);
+          const pages = await out.copyPages(src, src.getPageIndices());
+          pages.forEach((p) => out.addPage(p));
+        }
+        const bytes = await out.save();
+        const url = URL.createObjectURL(new Blob([bytes.buffer as ArrayBuffer], { type: "application/pdf" }));
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "merged.pdf";
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (e: any) {
+        status.hidden = false;
+        status.textContent = "Merge failed: " + e.message;
+      } finally {
+        mergeBtn.disabled = false;
+        mergeBtn.textContent = "Merge into one PDF";
+      }
+    }
+
+    const dz = $("dz");
+    dz.addEventListener("click", () => $("files").click());
+    dz.addEventListener("keydown", (e: KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("files").click(); }
+    });
+    dz.addEventListener("dragover", (e: DragEvent) => { e.preventDefault(); dz.classList.add("over"); });
+    dz.addEventListener("dragleave", () => dz.classList.remove("over"));
+    dz.addEventListener("drop", (e: DragEvent) => {
+      e.preventDefault();
+      dz.classList.remove("over");
+      if (e.dataTransfer?.files) addFiles(e.dataTransfer.files);
+    });
+    $("files").addEventListener("change", (e: Event) => {
+      const input = e.target as HTMLInputElement;
+      if (input.files) addFiles(input.files);
+      input.value = "";
+    });
+    $("clear").addEventListener("click", () => { entries = []; renderList(); });
+    $("merge").addEventListener("click", merge);
+  </script>
+</Base>

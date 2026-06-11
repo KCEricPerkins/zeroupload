@@ -1,0 +1,34 @@
+---
+import Base from "../layouts/Base.astro";
+import { SITE, TOOLS } from "../config";
+---
+<Base title={SITE.name} description={SITE.description}>
+  <section class="hero">
+    <span class="silence-badge"><span class="dot"></span>everything runs on your device</span>
+    <h1>Free tools that <em>never see</em> your data.</h1>
+    <p>
+      Converters, generators, and formatters that do the whole job inside your
+      browser. Nothing you type, paste, or open is sent to a server — there is
+      no server to send it to.
+    </p>
+  </section>
+
+  <section id="tools" class="tool-cards">
+    {TOOLS.map((t) =>
+      t.live ? (
+        <a class="tool-card" href={`/tools/${t.slug}/`}>
+          <span class="cat">{t.category}</span>
+          <h3>{t.name}</h3>
+          <p>{t.short}</p>
+        </a>
+      ) : (
+        <div class="tool-card soon">
+          <span class="cat">{t.category}</span>
+          <h3>{t.name}</h3>
+          <p>{t.short}</p>
+          <span class="soon-tag">coming soon</span>
+        </div>
+      )
+    )}
+  </section>
+</Base>

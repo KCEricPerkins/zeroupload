@@ -1,0 +1,227 @@
+/* ZeroUpload design tokens
+   Workbench aesthetic: cool steel-paper base, ink text, cobalt action,
+   verified-green for the privacy signature. */
+
+:root {
+  --bg: #eef1f4;
+  --surface: #ffffff;
+  --ink: #16202e;
+  --ink-soft: #5a6776;
+  --line: #d7dde4;
+  --cobalt: #2742f5;
+  --cobalt-deep: #1c31c4;
+  --verified: #0e8a5f;
+  --verified-bg: #e3f4ec;
+  --danger: #c4322c;
+  --danger-bg: #fbeae9;
+  --radius: 10px;
+  --font-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --font-body: "Instrument Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", "SF Mono", Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html { background: var(--bg); }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--ink);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap { max-width: 1060px; margin: 0 auto; padding: 0 24px; }
+
+/* ---------- header ---------- */
+.site-header {
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.site-header .wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+}
+.brand {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.brand-mark {
+  width: 22px; height: 22px; border-radius: 6px;
+  background: var(--cobalt);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 0.8rem; font-weight: 800;
+}
+.site-nav a {
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: 0.92rem;
+  margin-left: 22px;
+}
+.site-nav a:hover { color: var(--ink); }
+
+/* ---------- the signature: network silence badge ---------- */
+.silence-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--verified-bg);
+  color: var(--verified);
+  border: 1px solid color-mix(in srgb, var(--verified) 30%, transparent);
+  border-radius: 999px;
+  padding: 5px 14px 5px 10px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+.silence-badge .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--verified);
+  animation: pulse 2.4s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .silence-badge .dot { animation: none; }
+}
+
+/* ---------- buttons & inputs ---------- */
+.btn {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius);
+  padding: 11px 20px;
+  cursor: pointer;
+  background: var(--cobalt);
+  color: #fff;
+  transition: background 0.15s;
+}
+.btn:hover { background: var(--cobalt-deep); }
+.btn:focus-visible { outline: 3px solid color-mix(in srgb, var(--cobalt) 40%, transparent); outline-offset: 2px; }
+.btn.secondary {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+.btn.secondary:hover { border-color: var(--ink-soft); background: var(--surface); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+input[type="text"], textarea, select {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+input[type="text"]:focus, textarea:focus, select:focus {
+  outline: 2px solid var(--cobalt);
+  outline-offset: -1px;
+}
+
+/* ---------- tool page chrome ---------- */
+.tool-head { padding: 38px 0 8px; }
+.tool-head h1 {
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 4vw, 2.3rem);
+  letter-spacing: -0.02em;
+  margin: 0 0 6px;
+}
+.tool-head p.lede { color: var(--ink-soft); margin: 0 0 14px; max-width: 56ch; }
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 22px;
+}
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin: 20px 0 48px;
+}
+@media (max-width: 800px) { .tool-grid { grid-template-columns: 1fr; } }
+
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.field label { font-size: 0.85rem; font-weight: 600; color: var(--ink-soft); }
+
+.seo-prose { max-width: 68ch; padding-bottom: 64px; }
+.seo-prose h2 { font-family: var(--font-display); letter-spacing: -0.01em; font-size: 1.3rem; }
+.seo-prose p { color: var(--ink-soft); }
+
+/* ---------- homepage ---------- */
+.hero { padding: 64px 0 40px; }
+.hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2.1rem, 5.5vw, 3.4rem);
+  line-height: 1.06;
+  letter-spacing: -0.025em;
+  margin: 18px 0 14px;
+  max-width: 17ch;
+}
+.hero h1 em { font-style: normal; color: var(--cobalt); }
+.hero p { color: var(--ink-soft); font-size: 1.08rem; max-width: 52ch; margin: 0; }
+
+.tool-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  padding: 28px 0 72px;
+}
+.tool-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px;
+  text-decoration: none;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.tool-card:hover { border-color: var(--cobalt); transform: translateY(-2px); }
+.tool-card .cat {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
+.tool-card h3 { margin: 0; font-family: var(--font-display); font-size: 1.08rem; letter-spacing: -0.01em; }
+.tool-card p { margin: 0; font-size: 0.88rem; color: var(--ink-soft); }
+.tool-card.soon { opacity: 0.55; pointer-events: none; }
+.tool-card .soon-tag {
+  font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-soft);
+}
+
+/* ---------- footer ---------- */
+.site-footer {
+  border-top: 1px solid var(--line);
+  padding: 26px 0 40px;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+.site-footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+
+/* ---------- utility ---------- */
+.status { font-family: var(--font-mono); font-size: 0.82rem; padding: 8px 12px; border-radius: 8px; }
+.status.ok { background: var(--verified-bg); color: var(--verified); }
+.status.err { background: var(--danger-bg); color: var(--danger); white-space: pre-wrap; }

@@ -1,0 +1,45 @@
+---
+import Base from "../layouts/Base.astro";
+import { SITE } from "../config";
+---
+<Base title="Why local-only" description="How these tools work without a server, and why that matters for your privacy.">
+  <article class="seo-prose" style="padding-top:38px">
+    <h1 style="font-family:var(--font-display);letter-spacing:-0.02em">Why local-only</h1>
+    <p>
+      Most free web tools work by uploading your file or text to a server,
+      processing it there, and sending the result back. That model created
+      two problems this site exists to fix: your data sits on someone else's
+      machine (a compliance and privacy liability), and server costs push
+      operators toward aggressive, often deceptive advertising.
+    </p>
+    <p>
+      Every tool on {SITE.name} does the entire job inside your browser using
+      JavaScript and WebAssembly. There is no processing server. You can
+      verify this yourself: open your browser's developer tools, watch the
+      network panel, and use any tool. After the page loads, nothing is
+      transmitted.
+    </p>
+    <p>
+      No accounts, no upload limits, no tracking cookies, no consent banner —
+      because there is nothing to consent to.
+    </p>
+    <h2 style="font-family:var(--font-display);letter-spacing:-0.01em;font-size:1.3rem">What we do measure, exactly</h2>
+    <p>
+      Two things, both disclosed here. First, anonymous pageview counts via
+      Cloudflare Web Analytics — a cookie-free counter that records that a
+      page was visited, never who you are or what you typed into a tool.
+      Second, tool pages may show one static sponsor ad from Carbon, a
+      network built for developer sites that serves a single image with no
+      tracking scripts, no cookies, and no ad auction. Neither ever receives
+      the content you put into a tool, because that content never leaves
+      your browser in the first place. You can confirm all of this in your
+      browser's network panel at any time — that standing invitation is the
+      whole point.
+    </p>
+    <p>
+      If you'd rather support the site directly, the support link in the
+      header goes to our donation page. Donations are what keep the premium
+      ad networks and their tracker stacks permanently off this site.
+    </p>
+  </article>
+</Base>

@@ -1,0 +1,159 @@
+---
+import Base from "../../layouts/Base.astro";
+import SilenceBadge from "../../components/SilenceBadge.astro";
+import CarbonAd from "../../components/CarbonAd.astro";
+---
+<Base
+  title="JSON Formatter & Validator"
+  description="Format, validate, minify, and sort JSON instantly in your browser. Exact line and column on errors. No upload, no server, no size limits beyond your own machine."
+  isTool
+>
+  <div class="tool-head">
+    <h1>JSON Formatter &amp; Validator</h1>
+    <p class="lede">
+      Paste JSON, get it formatted, validated, minified, or key-sorted —
+      with the exact line and column of any error. Safe for API keys,
+      customer records, and anything else you'd never paste into a random
+      website, because this one never transmits it.
+    </p>
+    <SilenceBadge />
+  </div>
+
+  <div class="tool-grid">
+    <div class="panel">
+      <div class="field">
+        <label for="json-in">Input</label>
+        <textarea id="json-in" rows="18" spellcheck="false" placeholder='{"paste": "your JSON here"}'></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="fmt">Format</button>
+        <button class="btn secondary" id="min">Minify</button>
+        <button class="btn secondary" id="sort">Sort keys</button>
+        <select id="indent" aria-label="Indent size">
+          <option value="2">2 spaces</option>
+          <option value="4">4 spaces</option>
+          <option value="tab">Tabs</option>
+        </select>
+      </div>
+      <p class="status ok" id="status" hidden></p>
+    </div>
+
+    <div class="panel">
+      <div class="field">
+        <label for="json-out">Output</label>
+        <textarea id="json-out" rows="18" spellcheck="false" readonly></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn secondary" id="copy-out">Copy output</button>
+        <button class="btn secondary" id="dl-out">Download .json</button>
+        <span class="stats" id="stats"></span>
+      </div>
+    </div>
+  </div>
+
+  <CarbonAd />
+
+  <article class="seo-prose">
+    <h2>Why a local-only JSON formatter matters</h2>
+    <p>
+      JSON payloads routinely contain bearer tokens, internal hostnames,
+      customer PII, and unreleased data. Most online formatters post your
+      input to their server to process it. This one runs JSON.parse and
+      JSON.stringify in your own browser tab — open DevTools and watch the
+      network panel stay empty. It also means there's no payload size cap:
+      if your machine can hold it, this tool can format it.
+    </p>
+    <h2>Error messages that actually locate the error</h2>
+    <p>
+      Instead of "Unexpected token," validation failures report the line and
+      column where parsing stopped, with the surrounding text quoted, so you
+      can fix a missing comma in a 5,000-line file without hunting for it.
+    </p>
+  </article>
+
+  <style>
+    textarea { width: 100%; font-family: var(--font-mono); font-size: 0.82rem; resize: vertical; line-height: 1.5; }
+    .btn-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+    .stats { font-family: var(--font-mono); font-size: 0.75rem; color: var(--ink-soft); margin-left: auto; }
+  </style>
+
+  <script>
+    const $ = (id: string) => document.getElementById(id) as any;
+
+    function locate(src: string, message: string): string {
+      // Modern browsers include "position N" or "line L column C" in the message.
+      let pos = -1;
+      const posMatch = message.match(/position (\d+)/);
+      const lcMatch = message.match(/line (\d+) column (\d+)/);
+      if (posMatch) pos = parseInt(posMatch[1], 10);
+      let line: number, col: number;
+      if (lcMatch) {
+        line = parseInt(lcMatch[1], 10);
+        col = parseInt(lcMatch[2], 10);
+        pos = src.split("\n").slice(0, line - 1).join("\n").length + col;
+      } else if (pos >= 0) {
+        const upTo = src.slice(0, pos);
+        line = upTo.split("\n").length;
+        col = pos - upTo.lastIndexOf("\n");
+      } else {
+        return message;
+      }
+      const snippet = src.slice(Math.max(0, pos - 25), pos + 25).replace(/\n/g, "⏎");
+      return `Invalid JSON at line ${line}, column ${col}\n…${snippet}…`;
+    }
+
+    function sortDeep(v: any): any {
+      if (Array.isArray(v)) return v.map(sortDeep);
+      if (v && typeof v === "object") {
+        return Object.fromEntries(Object.keys(v).sort().map((k) => [k, sortDeep(v[k])]));
+      }
+      return v;
+    }
+
+    function indentValue(): string | number {
+      const v = $("indent").value;
+      return v === "tab" ? "\t" : parseInt(v, 10);
+    }
+
+    function run(transform: (parsed: any) => string) {
+      const src = $("json-in").value;
+      const status = $("status");
+      status.hidden = false;
+      if (!src.trim()) {
+        status.className = "status err";
+        status.textContent = "Input is empty. Paste JSON on the left.";
+        return;
+      }
+      try {
+        const parsed = JSON.parse(src);
+        const out = transform(parsed);
+        $("json-out").value = out;
+        status.className = "status ok";
+        status.textContent = "Valid JSON";
+        const bytesIn = new Blob([src]).size;
+        const bytesOut = new Blob([out]).size;
+        $("stats").textContent = `${bytesIn.toLocaleString()} B → ${bytesOut.toLocaleString()} B`;
+      } catch (e: any) {
+        status.className = "status err";
+        status.textContent = locate(src, e.message);
+        $("json-out").value = "";
+        $("stats").textContent = "";
+      }
+    }
+
+    $("fmt").addEventListener("click", () => run((p) => JSON.stringify(p, null, indentValue())));
+    $("min").addEventListener("click", () => run((p) => JSON.stringify(p)));
+    $("sort").addEventListener("click", () => run((p) => JSON.stringify(sortDeep(p), null, indentValue())));
+    $("copy-out").addEventListener("click", async () => {
+      await navigator.clipboard.writeText($("json-out").value);
+      $("copy-out").textContent = "Copied";
+      setTimeout(() => ($("copy-out").textContent = "Copy output"), 1500);
+    });
+    $("dl-out").addEventListener("click", () => {
+      const url = URL.createObjectURL(new Blob([$("json-out").value], { type: "application/json" }));
+      const a = document.createElement("a");
+      a.href = url; a.download = "formatted.json"; a.click();
+      URL.revokeObjectURL(url);
+    });
+  </script>
+</Base>

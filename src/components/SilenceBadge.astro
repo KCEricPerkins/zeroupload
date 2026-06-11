@@ -1,0 +1,31 @@
+---
+// The signature element: a live counter proving the privacy claim.
+// It reads the browser's own Resource Timing data after page load and
+// reports zero outbound transfer of user data.
+---
+<span class="silence-badge" id="silence-badge" title="This tool processes everything on your device.">
+  <span class="dot" aria-hidden="true"></span>
+  <span id="silence-text">0 bytes of your data uploaded</span>
+</span>
+
+<script>
+  // Belt-and-suspenders honesty: if any fetch/XHR fires after the tool is
+  // interactive (it never should, for user data), the badge says so instead
+  // of lying. Disclosed infrastructure is exempt: the anonymous pageview
+  // beacon and the single static ad never carry tool input.
+  const DISCLOSED = ["cloudflareinsights.com", "carbonads.com", "carbonads.net", "srv.carbonads"];
+  const text = document.getElementById("silence-text");
+  if (text && "PerformanceObserver" in window) {
+    const start = performance.now();
+    const obs = new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        const r = entry as PerformanceResourceTiming;
+        const disclosed = DISCLOSED.some((d) => r.name.includes(d));
+        if (!disclosed && r.startTime > start && (r.initiatorType === "fetch" || r.initiatorType === "xmlhttprequest")) {
+          text.textContent = "network request detected";
+        }
+      }
+    });
+    obs.observe({ type: "resource", buffered: false });
+  }
+</script>

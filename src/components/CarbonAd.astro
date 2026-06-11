@@ -1,0 +1,40 @@
+---
+// Single static dev-audience ad (Carbon Ads). No tracking, no cookies,
+// no auction scripts. Renders nothing until INTEGRATIONS.carbonServeId is set.
+import { INTEGRATIONS } from "../config";
+const enabled = INTEGRATIONS.carbonServeId && INTEGRATIONS.carbonPlacement;
+const src = `https://cdn.carbonads.com/carbon.js?serve=${INTEGRATIONS.carbonServeId}&placement=${INTEGRATIONS.carbonPlacement}`;
+---
+{enabled && (
+  <aside class="carbon-slot" aria-label="Sponsor">
+    <script async type="text/javascript" src={src} id="_carbonads_js" is:inline></script>
+    <span class="carbon-note">One static ad keeps these tools free. It doesn't track you.</span>
+  </aside>
+)}
+
+<style>
+  .carbon-slot {
+    margin: 20px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 360px;
+  }
+  .carbon-note {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--ink-soft);
+  }
+  /* Carbon injects #carbonads; style it to match the panel system */
+  :global(#carbonads) {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px;
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+  :global(#carbonads a) { color: var(--ink); text-decoration: none; }
+  :global(#carbonads .carbon-poweredby) { color: var(--ink-soft); font-size: 0.68rem; }
+</style>
