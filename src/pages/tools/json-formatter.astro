@@ -129,7 +129,7 @@ import CarbonAd from "../../components/CarbonAd.astro";
         const out = transform(parsed);
         $("json-out").value = out;
         status.className = "status ok";
-        status.textContent = "Valid JSON";
+        status.textContent = out === src ? "Valid JSON — already in this form, no change" : "Valid JSON";
         const bytesIn = new Blob([src]).size;
         const bytesOut = new Blob([out]).size;
         $("stats").textContent = `${bytesIn.toLocaleString()} B → ${bytesOut.toLocaleString()} B`;

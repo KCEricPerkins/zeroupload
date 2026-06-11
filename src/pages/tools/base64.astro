@@ -1,0 +1,150 @@
+---
+import Base from "../../layouts/Base.astro";
+import SilenceBadge from "../../components/SilenceBadge.astro";
+import CarbonAd from "../../components/CarbonAd.astro";
+---
+<Base
+  title="Base64 Encode & Decode"
+  description="Encode and decode Base64 — text or files, with URL-safe variant and full Unicode support — entirely in your browser. Safe for API payloads, credentials, and certificates."
+  isTool
+>
+  <div class="tool-head">
+    <h1>Base64 Encode &amp; Decode</h1>
+    <p class="lede">
+      Convert text or files to and from Base64 with full Unicode support and
+      a URL-safe variant. The strings people Base64 are exactly the strings
+      that shouldn't touch a third-party server — API credentials, auth
+      headers, certificates. Here they never do.
+    </p>
+    <SilenceBadge />
+  </div>
+
+  <div class="tool-grid">
+    <div class="panel">
+      <div class="field">
+        <label for="b64-in">Input</label>
+        <textarea id="b64-in" rows="14" spellcheck="false" placeholder="Text to encode, or Base64 to decode…"></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="enc">Encode →</button>
+        <button class="btn" id="dec">← Decode</button>
+        <label class="check"><input type="checkbox" id="urlsafe" /> URL-safe (-_ instead of +/)</label>
+      </div>
+      <div class="field" style="margin-top:14px">
+        <label for="b64-file">…or encode a file</label>
+        <input type="file" id="b64-file" />
+      </div>
+      <p class="status err" id="b64-status" hidden></p>
+    </div>
+
+    <div class="panel">
+      <div class="field">
+        <label for="b64-out">Output</label>
+        <textarea id="b64-out" rows="14" spellcheck="false" readonly></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn secondary" id="b64-copy">Copy output</button>
+        <button class="btn secondary" id="swap">Use output as input</button>
+        <span class="stats" id="b64-stats"></span>
+      </div>
+    </div>
+  </div>
+
+  <CarbonAd />
+
+  <article class="seo-prose">
+    <h2>Why decode Base64 locally</h2>
+    <p>
+      Base64 isn't encryption — it's a reversible encoding, which means
+      anything you paste into an online decoder is readable by whoever runs
+      it. Basic-auth headers, JWT segments, SMTP credentials, and certificate
+      blobs all travel as Base64, and they all get pasted into web decoders
+      thousands of times a day. This tool runs the browser's own encoder
+      locally, handles full Unicode (emoji and non-Latin scripts included,
+      where many tools corrupt them), and supports the URL-safe alphabet
+      used by JWTs and web APIs.
+    </p>
+  </article>
+
+  <style>
+    textarea { width: 100%; font-family: var(--font-mono); font-size: 0.82rem; resize: vertical; line-height: 1.5; }
+    .btn-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .check { display: flex; gap: 6px; align-items: center; font-size: 0.83rem; color: var(--ink-soft); }
+    .stats { font-family: var(--font-mono); font-size: 0.75rem; color: var(--ink-soft); margin-left: auto; }
+  </style>
+
+  <script>
+    const $ = (id: string) => document.getElementById(id) as any;
+
+    const toUrlSafe = (s: string) => s.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    const fromUrlSafe = (s: string) => {
+      let t = s.replace(/-/g, "+").replace(/_/g, "/");
+      while (t.length % 4) t += "=";
+      return t;
+    };
+
+    function setOut(v: string) {
+      $("b64-out").value = v;
+      $("b64-stats").textContent = `${$("b64-in").value.length.toLocaleString()} → ${v.length.toLocaleString()} chars`;
+      $("b64-status").hidden = true;
+    }
+    function fail(msg: string) {
+      const s = $("b64-status");
+      s.hidden = false;
+      s.textContent = msg;
+      $("b64-out").value = "";
+      $("b64-stats").textContent = "";
+    }
+
+    $("enc").addEventListener("click", () => {
+      try {
+        const bytes = new TextEncoder().encode($("b64-in").value);
+        let bin = "";
+        bytes.forEach((b) => (bin += String.fromCharCode(b)));
+        let out = btoa(bin);
+        if ($("urlsafe").checked) out = toUrlSafe(out);
+        setOut(out);
+      } catch (e: any) {
+        fail("Couldn't encode: " + e.message);
+      }
+    });
+
+    $("dec").addEventListener("click", () => {
+      try {
+        let input = $("b64-in").value.trim().replace(/\s/g, "");
+        if ($("urlsafe").checked || /[-_]/.test(input)) input = fromUrlSafe(input);
+        const bin = atob(input);
+        const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+        setOut(new TextDecoder("utf-8", { fatal: false }).decode(bytes));
+      } catch {
+        fail("That doesn't look like valid Base64. Check for missing characters or try the URL-safe option.");
+      }
+    });
+
+    $("b64-file").addEventListener("change", async (e: Event) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const buf = new Uint8Array(await file.arrayBuffer());
+      let bin = "";
+      // chunk to avoid call-stack limits on big files
+      for (let i = 0; i < buf.length; i += 0x8000) {
+        bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+      }
+      let out = btoa(bin);
+      if ($("urlsafe").checked) out = toUrlSafe(out);
+      $("b64-in").value = `[file: ${file.name}, ${buf.length.toLocaleString()} bytes]`;
+      setOut(out);
+    });
+
+    $("b64-copy").addEventListener("click", async () => {
+      await navigator.clipboard.writeText($("b64-out").value);
+      $("b64-copy").textContent = "Copied";
+      setTimeout(() => ($("b64-copy").textContent = "Copy output"), 1500);
+    });
+    $("swap").addEventListener("click", () => {
+      $("b64-in").value = $("b64-out").value;
+      $("b64-out").value = "";
+      $("b64-stats").textContent = "";
+    });
+  </script>
+</Base>

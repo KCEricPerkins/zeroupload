@@ -43,8 +43,36 @@ export const TOOLS = [
   {
     slug: "image-compressor",
     name: "Image Compressor",
-    short: "Shrink PNG and JPEG files locally",
+    short: "Shrink, resize, and convert images locally",
     category: "Image tools",
-    live: false,
+    live: true,
+  },
+  {
+    slug: "pdf-split",
+    name: "PDF Split",
+    short: "Extract page ranges or split every page",
+    category: "Document tools",
+    live: true,
+  },
+  {
+    slug: "qr-code-generator",
+    name: "QR Code Generator",
+    short: "QR codes that never expire and never track scans",
+    category: "Generators",
+    live: true,
+  },
+  {
+    slug: "word-counter",
+    name: "Word Counter",
+    short: "Words, characters, reading time, keyword density",
+    category: "Writing tools",
+    live: true,
+  },
+  {
+    slug: "base64",
+    name: "Base64 Encode / Decode",
+    short: "Text and files, URL-safe, full Unicode",
+    category: "Developer tools",
+    live: true,
   },
 ];

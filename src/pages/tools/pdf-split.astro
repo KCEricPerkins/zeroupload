@@ -1,0 +1,199 @@
+---
+import Base from "../../layouts/Base.astro";
+import SilenceBadge from "../../components/SilenceBadge.astro";
+import CarbonAd from "../../components/CarbonAd.astro";
+---
+<Base
+  title="Split PDF — Extract Pages"
+  description="Extract page ranges from a PDF or split every page into its own file — entirely in your browser with no upload, no limits, and no watermarks."
+  isTool
+>
+  <div class="tool-head">
+    <h1>Split PDF</h1>
+    <p class="lede">
+      Pull out the pages you need — a range like 2-5, a list like 1,3,8, or
+      every page as its own file. The PDF is processed in your browser, so
+      contracts and records never travel anywhere.
+    </p>
+    <SilenceBadge />
+  </div>
+
+  <div class="merge-stack">
+    <div class="panel">
+      <div class="dropzone" id="dz" tabindex="0" role="button" aria-label="Add a PDF">
+        <strong>Drop a PDF here</strong>
+        <span>or click to choose a file</span>
+        <input type="file" id="file" accept="application/pdf" hidden />
+      </div>
+
+      <div id="loaded" hidden>
+        <p class="loaded-name" id="loaded-name"></p>
+        <div class="field">
+          <label for="pages">Pages to extract</label>
+          <input type="text" id="pages" placeholder="e.g. 1-3, 7, 12-14  (leave empty for all pages)" />
+        </div>
+        <div class="merge-actions">
+          <button class="btn" id="extract">Extract to one PDF</button>
+          <button class="btn secondary" id="split-all">Split every page (.zip)</button>
+          <button class="btn secondary" id="reset">Start over</button>
+        </div>
+        <p class="status err" id="split-status" hidden style="margin-top:10px"></p>
+      </div>
+    </div>
+  </div>
+
+  <CarbonAd />
+
+  <article class="seo-prose">
+    <h2>Two ways to split</h2>
+    <p>
+      Extract builds a single new PDF containing just the pages you list, in
+      the order you list them — so "5, 1-2" produces page 5 followed by pages
+      1 and 2, which doubles as a page reorderer. Split every page produces a
+      zip with one PDF per page, named by page number. Both run locally with
+      pdf-lib; the only limit is your device's memory, and password-protected
+      files need unlocking first.
+    </p>
+  </article>
+
+  <style>
+    .merge-stack { margin: 20px 0 24px; }
+    .dropzone {
+      border: 2px dashed var(--line); border-radius: 12px; padding: 36px 20px;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      color: var(--ink-soft); cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .dropzone strong { color: var(--ink); font-family: var(--font-display); font-size: 1.05rem; }
+    .dropzone.over, .dropzone:hover { border-color: var(--cobalt); background: color-mix(in srgb, var(--cobalt) 4%, transparent); }
+    .dropzone:focus-visible { outline: 3px solid color-mix(in srgb, var(--cobalt) 40%, transparent); }
+    .loaded-name { font-family: var(--font-mono); font-size: 0.82rem; color: var(--verified); background: var(--verified-bg); border-radius: 8px; padding: 8px 12px; }
+    .merge-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .field input { width: 100%; }
+  </style>
+
+  <script>
+    import { PDFDocument } from "pdf-lib";
+    import { zipSync } from "fflate";
+
+    const $ = (id: string) => document.getElementById(id) as any;
+    let srcBytes: ArrayBuffer | null = null;
+    let pageCount = 0;
+    let baseName = "document";
+
+    function fail(msg: string) {
+      const s = $("split-status");
+      s.hidden = false;
+      s.textContent = msg;
+    }
+    function clearFail() { $("split-status").hidden = true; }
+
+    async function load(file: File) {
+      clearFail();
+      try {
+        srcBytes = await file.arrayBuffer();
+        const doc = await PDFDocument.load(srcBytes);
+        pageCount = doc.getPageCount();
+        baseName = file.name.replace(/\.pdf$/i, "");
+        $("loaded-name").textContent = `${file.name} — ${pageCount} pages loaded`;
+        $("loaded").hidden = false;
+        $("pages").placeholder = `e.g. 1-3, 7  (1–${pageCount}; empty = all)`;
+      } catch (e: any) {
+        fail(/encrypt/i.test(e.message)
+          ? "This PDF is password-protected. Unlock it first, then try again."
+          : "Couldn't read that PDF.");
+      }
+    }
+
+    // "1-3, 7, 12-14" -> [0,1,2,6,11,12,13]; preserves listed order, validates range
+    function parsePages(input: string): number[] | string {
+      if (!input.trim()) return Array.from({ length: pageCount }, (_, i) => i);
+      const out: number[] = [];
+      for (const part of input.split(",")) {
+        const p = part.trim();
+        if (!p) continue;
+        const m = p.match(/^(\d+)\s*-\s*(\d+)$/);
+        if (m) {
+          const a = parseInt(m[1], 10), b = parseInt(m[2], 10);
+          if (a < 1 || b > pageCount || a > b) return `"${p}" is outside 1–${pageCount}.`;
+          for (let i = a; i <= b; i++) out.push(i - 1);
+        } else if (/^\d+$/.test(p)) {
+          const n = parseInt(p, 10);
+          if (n < 1 || n > pageCount) return `Page ${n} is outside 1–${pageCount}.`;
+          out.push(n - 1);
+        } else {
+          return `Couldn't understand "${p}". Use numbers, commas, and ranges like 2-5.`;
+        }
+      }
+      return out.length ? out : "No pages listed.";
+    }
+
+    function save(bytes: Uint8Array, name: string, type = "application/pdf") {
+      const url = URL.createObjectURL(new Blob([bytes.buffer as ArrayBuffer], { type }));
+      const a = document.createElement("a");
+      a.href = url; a.download = name; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    $("extract").addEventListener("click", async () => {
+      if (!srcBytes) return;
+      clearFail();
+      const pages = parsePages($("pages").value);
+      if (typeof pages === "string") return fail(pages);
+      const src = await PDFDocument.load(srcBytes);
+      const out = await PDFDocument.create();
+      (await out.copyPages(src, pages)).forEach((p) => out.addPage(p));
+      save(await out.save(), `${baseName}-pages.pdf`);
+    });
+
+    $("split-all").addEventListener("click", async () => {
+      if (!srcBytes) return;
+      clearFail();
+      const btn = $("split-all");
+      btn.disabled = true;
+      btn.textContent = "Splitting…";
+      try {
+        const src = await PDFDocument.load(srcBytes);
+        const files: Record<string, Uint8Array> = {};
+        const pad = String(pageCount).length;
+        for (let i = 0; i < pageCount; i++) {
+          const out = await PDFDocument.create();
+          (await out.copyPages(src, [i])).forEach((p) => out.addPage(p));
+          files[`${baseName}-page-${String(i + 1).padStart(pad, "0")}.pdf`] = await out.save();
+        }
+        save(zipSync(files), `${baseName}-split.zip`, "application/zip");
+      } catch (e: any) {
+        fail("Split failed: " + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Split every page (.zip)";
+      }
+    });
+
+    $("reset").addEventListener("click", () => {
+      srcBytes = null;
+      $("loaded").hidden = true;
+      $("pages").value = "";
+      clearFail();
+    });
+
+    const dz = $("dz");
+    dz.addEventListener("click", () => $("file").click());
+    dz.addEventListener("keydown", (e: KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("file").click(); }
+    });
+    dz.addEventListener("dragover", (e: DragEvent) => { e.preventDefault(); dz.classList.add("over"); });
+    dz.addEventListener("dragleave", () => dz.classList.remove("over"));
+    dz.addEventListener("drop", (e: DragEvent) => {
+      e.preventDefault();
+      dz.classList.remove("over");
+      const f = e.dataTransfer?.files?.[0];
+      if (f) load(f);
+    });
+    $("file").addEventListener("change", (e: Event) => {
+      const f = (e.target as HTMLInputElement).files?.[0];
+      if (f) load(f);
+      (e.target as HTMLInputElement).value = "";
+    });
+  </script>
+</Base>

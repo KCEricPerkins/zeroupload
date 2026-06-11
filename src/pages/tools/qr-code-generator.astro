@@ -1,0 +1,206 @@
+---
+import Base from "../../layouts/Base.astro";
+import SilenceBadge from "../../components/SilenceBadge.astro";
+import CarbonAd from "../../components/CarbonAd.astro";
+---
+<Base
+  title="QR Code Generator"
+  description="Generate QR codes that never expire — URLs, text, WiFi credentials — with color and size options, PNG and SVG download. Created entirely in your browser; nothing is sent to a server and no account is needed."
+  isTool
+>
+  <div class="tool-head">
+    <h1>QR Code Generator</h1>
+    <p class="lede">
+      QR codes that are yours forever. Many "free" QR sites route your code
+      through their server and quietly disable it later unless you pay —
+      these are generated on your device and encode your content directly,
+      so they can never expire, never break, and never track scans.
+    </p>
+    <SilenceBadge />
+  </div>
+
+  <div class="tool-grid">
+    <div class="panel">
+      <div class="field">
+        <label for="qr-type">Type</label>
+        <select id="qr-type">
+          <option value="text">URL or text</option>
+          <option value="wifi">WiFi network</option>
+        </select>
+      </div>
+
+      <div id="text-fields">
+        <div class="field">
+          <label for="qr-text">Content</label>
+          <textarea id="qr-text" rows="3" spellcheck="false" placeholder="https://example.com">https://zeroupload-26x.pages.dev</textarea>
+        </div>
+      </div>
+
+      <div id="wifi-fields" hidden>
+        <div class="field">
+          <label for="wifi-ssid">Network name (SSID)</label>
+          <input type="text" id="wifi-ssid" placeholder="MyNetwork" />
+        </div>
+        <div class="field">
+          <label for="wifi-pass">Password</label>
+          <input type="text" id="wifi-pass" placeholder="password" />
+        </div>
+        <div class="field">
+          <label for="wifi-sec">Security</label>
+          <select id="wifi-sec">
+            <option value="WPA">WPA / WPA2 / WPA3</option>
+            <option value="WEP">WEP</option>
+            <option value="nopass">Open network</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="opt-row">
+        <div class="field">
+          <label for="qr-fg">Code color</label>
+          <input type="color" id="qr-fg" value="#16202e" />
+        </div>
+        <div class="field">
+          <label for="qr-bg">Background</label>
+          <input type="color" id="qr-bg" value="#ffffff" />
+        </div>
+        <div class="field">
+          <label for="qr-ec">Error correction</label>
+          <select id="qr-ec">
+            <option value="M" selected>Medium (default)</option>
+            <option value="L">Low (densest)</option>
+            <option value="Q">Quartile</option>
+            <option value="H">High (survives damage/logos)</option>
+          </select>
+        </div>
+      </div>
+      <p class="status err" id="qr-status" hidden></p>
+    </div>
+
+    <div class="panel qr-out">
+      <canvas id="qr-canvas" width="280" height="280"></canvas>
+      <div class="btn-row">
+        <button class="btn" id="dl-png">Download PNG</button>
+        <button class="btn secondary" id="dl-svg">Download SVG</button>
+        <select id="png-size" aria-label="PNG size">
+          <option value="512">512 px</option>
+          <option value="1024" selected>1024 px</option>
+          <option value="2048">2048 px (print)</option>
+        </select>
+      </div>
+      <p class="qr-note">Scan it with your phone right off the screen to test.</p>
+    </div>
+  </div>
+
+  <CarbonAd />
+
+  <article class="seo-prose">
+    <h2>Why these QR codes can't expire</h2>
+    <p>
+      A QR code is just a pattern encoding your text — it needs no service to
+      keep working. Expiring "free" QR codes are a business model: those
+      sites encode a redirect through their own server instead of your
+      actual link, which lets them disable it, charge you, or log every
+      scan. This generator encodes your content directly into the pattern on
+      your device, so the printed code works for as long as your URL does,
+      with no middleman to pay, break, or snoop.
+    </p>
+    <h2>Practical settings</h2>
+    <p>
+      Medium error correction suits most uses. Choose High if the code will
+      be printed small, might get scuffed, or will have a logo placed over
+      the center. Keep strong contrast between code and background colors —
+      dark-on-light scans most reliably. The SVG download scales to any
+      print size with perfectly crisp edges; use the 2048 px PNG for signage
+      if your print shop prefers raster files.
+    </p>
+  </article>
+
+  <style>
+    .qr-out { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    #qr-canvas { border: 1px solid var(--line); border-radius: 10px; max-width: 100%; }
+    .btn-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
+    .opt-row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .opt-row .field { flex: 1; min-width: 110px; }
+    .qr-note { font-size: 0.8rem; color: var(--ink-soft); margin: 0; }
+    textarea, input[type="text"] { width: 100%; }
+    textarea { font-family: var(--font-mono); font-size: 0.85rem; resize: vertical; }
+  </style>
+
+  <script>
+    import QRCode from "qrcode";
+
+    const $ = (id: string) => document.getElementById(id) as any;
+
+    const escapeWifi = (s: string) => s.replace(/([\\;,:"])/g, "\\$1");
+
+    function payload(): string {
+      if ($("qr-type").value === "wifi") {
+        const sec = $("wifi-sec").value;
+        const ssid = escapeWifi($("wifi-ssid").value);
+        const pass = escapeWifi($("wifi-pass").value);
+        return sec === "nopass"
+          ? `WIFI:T:nopass;S:${ssid};;`
+          : `WIFI:T:${sec};S:${ssid};P:${pass};;`;
+      }
+      return $("qr-text").value;
+    }
+
+    function opts(width: number) {
+      return {
+        width,
+        margin: 2,
+        errorCorrectionLevel: $("qr-ec").value,
+        color: { dark: $("qr-fg").value, light: $("qr-bg").value },
+      };
+    }
+
+    async function render() {
+      const data = payload();
+      const status = $("qr-status");
+      if (!data.trim()) {
+        status.hidden = false;
+        status.textContent = "Enter some content to encode.";
+        return;
+      }
+      try {
+        await QRCode.toCanvas($("qr-canvas"), data, opts(280));
+        status.hidden = true;
+      } catch (e: any) {
+        status.hidden = false;
+        status.textContent = "Couldn't generate: " + e.message;
+      }
+    }
+
+    $("dl-png").addEventListener("click", async () => {
+      const data = payload();
+      if (!data.trim()) return;
+      const size = parseInt($("png-size").value, 10);
+      const url = await QRCode.toDataURL(data, opts(size));
+      const a = document.createElement("a");
+      a.href = url; a.download = "qr-code.png"; a.click();
+    });
+
+    $("dl-svg").addEventListener("click", async () => {
+      const data = payload();
+      if (!data.trim()) return;
+      const svg = await QRCode.toString(data, { ...opts(280), type: "svg" });
+      const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+      const a = document.createElement("a");
+      a.href = url; a.download = "qr-code.svg"; a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    $("qr-type").addEventListener("change", () => {
+      const wifi = $("qr-type").value === "wifi";
+      $("text-fields").hidden = wifi;
+      $("wifi-fields").hidden = !wifi;
+      render();
+    });
+
+    for (const id of ["qr-text", "qr-fg", "qr-bg", "qr-ec", "wifi-ssid", "wifi-pass", "wifi-sec"]) {
+      $(id).addEventListener("input", render);
+    }
+    render();
+  </script>
+</Base>

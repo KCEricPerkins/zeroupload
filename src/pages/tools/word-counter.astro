@@ -1,0 +1,129 @@
+---
+import Base from "../../layouts/Base.astro";
+import SilenceBadge from "../../components/SilenceBadge.astro";
+import CarbonAd from "../../components/CarbonAd.astro";
+---
+<Base
+  title="Word Counter"
+  description="Count words, characters, sentences, and paragraphs with reading time and keyword density — live as you type, entirely in your browser. Safe for unpublished manuscripts and confidential documents."
+  isTool
+>
+  <div class="tool-head">
+    <h1>Word Counter</h1>
+    <p class="lede">
+      Live word, character, sentence, and paragraph counts with reading time
+      and keyword density. Your text never leaves this page — safe for
+      unpublished drafts, legal documents, and anything under NDA.
+    </p>
+    <SilenceBadge />
+  </div>
+
+  <div class="tool-grid">
+    <div class="panel">
+      <div class="field">
+        <label for="text-in">Your text</label>
+        <textarea id="text-in" rows="18" spellcheck="false" placeholder="Type or paste your text here…"></textarea>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="stat-grid">
+        <div class="stat"><strong id="s-words">0</strong><span>words</span></div>
+        <div class="stat"><strong id="s-chars">0</strong><span>characters</span></div>
+        <div class="stat"><strong id="s-nospace">0</strong><span>chars, no spaces</span></div>
+        <div class="stat"><strong id="s-sent">0</strong><span>sentences</span></div>
+        <div class="stat"><strong id="s-para">0</strong><span>paragraphs</span></div>
+        <div class="stat"><strong id="s-read">0 min</strong><span>reading time</span></div>
+        <div class="stat"><strong id="s-speak">0 min</strong><span>speaking time</span></div>
+        <div class="stat"><strong id="s-avg">0</strong><span>avg word length</span></div>
+      </div>
+
+      <p style="font-size:0.85rem;font-weight:600;color:var(--ink-soft);margin:18px 0 8px">Top words</p>
+      <ul class="density" id="density"><li class="empty">Start typing to see keyword density.</li></ul>
+    </div>
+  </div>
+
+  <CarbonAd />
+
+  <article class="seo-prose">
+    <h2>Counts you can trust with text you can't share</h2>
+    <p>
+      Most online word counters send keystrokes or pasted text to a server.
+      This one computes everything locally as you type. Reading time uses
+      238 words per minute (the average adult silent-reading rate) and
+      speaking time uses 150 words per minute, a comfortable presentation
+      pace. Keyword density ignores common stop words so the list reflects
+      the words doing actual work in your writing.
+    </p>
+  </article>
+
+  <style>
+    textarea { width: 100%; font-family: var(--font-body); font-size: 0.95rem; resize: vertical; line-height: 1.6; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+    .stat {
+      background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
+      padding: 12px; display: flex; flex-direction: column; gap: 2px;
+    }
+    .stat strong { font-family: var(--font-display); font-size: 1.35rem; letter-spacing: -0.01em; }
+    .stat span { font-size: 0.72rem; color: var(--ink-soft); }
+    .density { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 5px; }
+    .density li {
+      display: flex; justify-content: space-between;
+      font-family: var(--font-mono); font-size: 0.8rem;
+      background: var(--bg); border-radius: 6px; padding: 5px 10px;
+    }
+    .density li span { color: var(--ink-soft); }
+    .density li.empty { color: var(--ink-soft); background: none; padding-left: 0; }
+  </style>
+
+  <script>
+    const $ = (id: string) => document.getElementById(id) as any;
+    const STOP = new Set("the a an and or but of to in on at for with as by is are was were be been it its this that these those i you he she we they my your our not from have has had will would can could do does did so if then than there here what which who".split(" "));
+
+    function update() {
+      const t: string = $("text-in").value;
+      const words = (t.match(/[\p{L}\p{N}'’-]+/gu) || []);
+      const sentences = (t.match(/[^.!?…]+[.!?…]+/g) || (t.trim() ? [t] : [])).filter((s) => s.trim());
+      const paragraphs = t.split(/\n\s*\n/).filter((p) => p.trim());
+
+      $("s-words").textContent = words.length.toLocaleString();
+      $("s-chars").textContent = t.length.toLocaleString();
+      $("s-nospace").textContent = t.replace(/\s/g, "").length.toLocaleString();
+      $("s-sent").textContent = sentences.length.toLocaleString();
+      $("s-para").textContent = paragraphs.length.toLocaleString();
+      $("s-read").textContent = fmtTime(words.length / 238);
+      $("s-speak").textContent = fmtTime(words.length / 150);
+      $("s-avg").textContent = words.length
+        ? (words.reduce((s, w) => s + w.length, 0) / words.length).toFixed(1)
+        : "0";
+
+      const freq: Record<string, number> = {};
+      for (const w of words) {
+        const k = w.toLowerCase();
+        if (k.length < 3 || STOP.has(k)) continue;
+        freq[k] = (freq[k] || 0) + 1;
+      }
+      const top = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 8);
+      const list = $("density");
+      list.innerHTML = "";
+      if (!top.length) {
+        list.innerHTML = '<li class="empty">Start typing to see keyword density.</li>';
+      } else {
+        for (const [word, n] of top) {
+          const li = document.createElement("li");
+          const pct = ((n / words.length) * 100).toFixed(1);
+          li.innerHTML = `${word} <span>${n} · ${pct}%</span>`;
+          list.appendChild(li);
+        }
+      }
+    }
+
+    function fmtTime(mins: number): string {
+      if (mins < 1) return Math.max(0, Math.round(mins * 60)) + " sec";
+      return Math.round(mins) + " min";
+    }
+
+    $("text-in").addEventListener("input", update);
+    update();
+  </script>
+</Base>
