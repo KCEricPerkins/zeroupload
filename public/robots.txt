@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://zeroupload-26x.pages.dev/sitemap-index.xml
+Sitemap: https://zeroupload.tools/sitemap-index.xml

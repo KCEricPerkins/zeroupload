@@ -6,6 +6,6 @@ import sitemap from '@astrojs/sitemap';
 export default defineConfig({
   // Used for the sitemap and canonical URLs. Update this when the custom
   // domain is attached, and also update SITE.url in src/config.ts to match.
-  site: 'https://zeroupload-26x.pages.dev',
+  site: 'https://zeroupload.tools',
   integrations: [sitemap()],
 });

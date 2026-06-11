@@ -10,7 +10,7 @@ export const SITE = {
 // Paste IDs here as you get them. Empty string = feature stays off.
 export const INTEGRATIONS = {
   // Cloudflare dashboard -> Web Analytics -> add site -> copy the token
-  cloudflareAnalyticsToken: "",
+  cloudflareAnalyticsToken: "8ec5aa085aa54b0ab67a9f5d6a47cb72",
   // carbonads.net -> apply -> approval email includes serve ID like "CESDV2QW"
   carbonServeId: "",
   carbonPlacement: "", // usually your domain without dots, e.g. "zerouploadtools"
